@@ -22,19 +22,19 @@ export default function SnowEffect({ isActive }: SnowEffectProps) {
 
         let idCounter = 0;
         const interval = setInterval(() => {
-            // Spawn 2-3 flakes at a time for a denser effect
-            const newFlakes = Array.from({ length: 3 }).map(() => {
+            // Spawn fewer flakes per interval to drastically improve mobile FPS
+            const newFlakes = Array.from({ length: 2 }).map(() => {
                 idCounter += 1;
                 return {
                     id: Date.now() + idCounter, // Unique enough ID
                     x: Math.random() * 100, // Random percentage string width (vw)
-                    size: Math.random() * 1.5 + 0.5, // Random scale between 0.5x and 2x
+                    size: Math.random() * 1.2 + 0.3, // Random scale between 0.3x and 1.5x
                     duration: Math.random() * 3 + 4, // Drop speed between 4s and 7s
                 };
             });
 
             setSnowflakes((prev) => [...prev, ...newFlakes]);
-        }, 300); // 300ms intervals
+        }, 250); // 250ms intervals
 
         return () => clearInterval(interval);
     }, [isActive]);
@@ -50,29 +50,24 @@ export default function SnowEffect({ isActive }: SnowEffectProps) {
                     <motion.div
                         key={flake.id}
                         initial={{
-                            y: -50,
+                            y: "-5vh",
                             x: `${flake.x}vw`,
                             opacity: 0,
                             scale: flake.size,
-                            rotate: 0,
                         }}
                         animate={{
-                            y: "150vh",
-                            x: `${flake.x + (Math.random() > 0.5 ? 10 : -10)}vw`, // Drift slightly left or right
-                            opacity: [0, 1, 1, 0],
-                            rotate: 360,
+                            y: "110vh",
+                            x: `${flake.x + (Math.random() > 0.5 ? 5 : -5)}vw`, // Drift slightly left or right
+                            opacity: [0, 0.8, 0.8, 0],
                         }}
                         transition={{
                             duration: flake.duration,
                             ease: "linear",
                         }}
                         onAnimationComplete={() => removeSnowflake(flake.id)}
-                        className="absolute top-0 text-white drop-shadow-md"
-                    >
-                        <span className="material-symbols-outlined !text-xl opacity-90">
-                            ac_unit
-                        </span>
-                    </motion.div>
+                        className="absolute top-0 w-2 h-2 md:w-3 md:h-3 rounded-full bg-white opacity-80"
+                        style={{ willChange: "transform, opacity" }}
+                    />
                 ))}
             </AnimatePresence>
         </div>
