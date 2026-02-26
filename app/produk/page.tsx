@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { initialProducts } from '@/data/products';
 import { ProductCard } from '@/components/product/ProductCard';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
-import { Search, SlidersHorizontal, PackageX, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, SlidersHorizontal, PackageX, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 8;
 
-export default function ProdukPage() {
+function ProdukContent() {
+    const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('');
     const [sortOption, setSortOption] = useState('terbaru');
@@ -21,6 +23,14 @@ export default function ProdukPage() {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [showFilters, setShowFilters] = useState(false);
+
+    // Read URL category param on mount or change
+    useEffect(() => {
+        const cat = searchParams.get('category');
+        if (cat) {
+            setCategoryFilter(cat);
+        }
+    }, [searchParams]);
 
     // Derive categories from products
     const categories = useMemo(() => {
@@ -53,7 +63,15 @@ export default function ProdukPage() {
 
         // Price Range
         if (PriceMin) {
-            result = result.filter(p => p.price >= parseInt(PriceMin, 10));
+            const minVal = parseInt(PriceMin, 10);
+            const highestPrice = Math.max(...initialProducts.map(p => p.price));
+
+            if (minVal > highestPrice) {
+                // User requirement: if the inputted min price is above the highest possible price, return empty
+                result = [];
+            } else {
+                result = result.filter(p => p.price >= minVal);
+            }
         }
         if (PriceMax) {
             result = result.filter(p => p.price <= parseInt(PriceMax, 10));
@@ -209,7 +227,7 @@ export default function ProdukPage() {
 
                     {paginatedProducts.length > 0 ? (
                         <>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                 {paginatedProducts.map(product => (
                                     <ProductCard key={product.id} product={product} />
                                 ))}
@@ -265,5 +283,17 @@ export default function ProdukPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ProdukPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex justify-center items-center min-h-[50vh]">
+                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+            </div>
+        }>
+            <ProdukContent />
+        </Suspense>
     );
 }

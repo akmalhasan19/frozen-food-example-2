@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useCart } from "@/store/cart-context";
+import { Product } from "@/types";
 
 // Sample Data Array (expanded to 8 to show pagination)
 const flashSaleItems = [
@@ -90,8 +92,34 @@ const flashSaleItems = [
 export default function FlashSaleSection() {
     const [currentPage, setCurrentPage] = useState(0);
     const [direction, setDirection] = useState(0); // 1 = right, -1 = left
+    const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+    const [qty, setQtyModal] = useState(1);
+    const { items, addItem, setQty } = useCart();
+
     const itemsPerPage = 4;
     const totalPages = Math.ceil(flashSaleItems.length / itemsPerPage);
+
+    // Reset qty when product changes
+    useEffect(() => {
+        setQtyModal(1);
+    }, [selectedProduct]);
+
+    // Lock body scroll when modal is open
+    useEffect(() => {
+        if (selectedProduct) {
+            // Get original body overflow
+            const originalStyle = window.getComputedStyle(document.body).overflow;
+            // Prevent scrolling on body
+            document.body.style.overflow = 'hidden';
+            // Also add touch-action none to body to prevent mobile Safari bounce scroll on background
+            document.body.style.touchAction = 'none';
+
+            return () => {
+                document.body.style.overflow = originalStyle;
+                document.body.style.touchAction = '';
+            };
+        }
+    }, [selectedProduct]);
 
     const handleNext = () => {
         setDirection(1);
@@ -123,6 +151,45 @@ export default function FlashSaleSection() {
     // Calculate which items to display on the current page
     const startIndex = currentPage * itemsPerPage;
     const currentItems = flashSaleItems.slice(startIndex, startIndex + itemsPerPage);
+
+    const parsePrice = (priceStr: string) => parseInt(priceStr.replace(/\D/g, ''));
+    const parseStock = (stockStr: string) => parseInt(stockStr.replace(/\D/g, '')) || 0;
+
+    const handleAddToCart = () => {
+        if (!selectedProduct) return;
+
+        const stock = parseStock(selectedProduct.itemsLeft);
+        const price = parsePrice(selectedProduct.price);
+
+        const productToAdd: Product = {
+            id: `fs-${selectedProduct.id}`,
+            name: selectedProduct.name,
+            slug: selectedProduct.name.toLowerCase().replace(/\s+/g, '-'),
+            description: selectedProduct.description || "Rasakan kelezatan produk premium kami. Dibuat dengan bahan-bahan pangan berkualitas tinggi untuk memberikan cita rasa terbaik dan bergizi bagi Anda dan keluarga.",
+            price: price,
+            stock: stock,
+            category: 'Seafood', // default category
+            image: selectedProduct.image,
+            isActive: true,
+            createdAt: new Date().toISOString()
+        };
+
+        const existingCartItem = items.find(i => i.product.id === productToAdd.id);
+
+        if (existingCartItem) {
+            setQty(productToAdd.id, existingCartItem.quantity + qty);
+        } else {
+            addItem(productToAdd);
+            if (qty > 1) {
+                // We timeout to ensure the item is added before we change its quantity
+                setTimeout(() => {
+                    setQty(productToAdd.id, qty);
+                }, 0);
+            }
+        }
+
+        setSelectedProduct(null);
+    };
 
     return (
         <section className="relative px-4 md:px-10 lg:px-20 pt-2 pb-10 overflow-hidden">
@@ -174,7 +241,11 @@ export default function FlashSaleSection() {
                         className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 relative z-10 w-full"
                     >
                         {currentItems.map((item) => (
-                            <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-3 md:p-4 group hover:shadow-2xl hover:shadow-primary/10 transition-all flex flex-col h-full">
+                            <div
+                                key={item.id}
+                                onClick={() => setSelectedProduct(item)}
+                                className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-3 md:p-4 group hover:shadow-2xl hover:shadow-primary/10 transition-all flex flex-col h-full cursor-pointer"
+                            >
                                 <div className="relative rounded-2xl overflow-hidden aspect-square mb-2 md:mb-4 bg-slate-50 dark:bg-slate-800">
                                     <img
                                         alt={item.name}
@@ -213,6 +284,99 @@ export default function FlashSaleSection() {
 
             {/* Bottom Fade Transition */}
             <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-50 dark:from-slate-900/50 to-transparent pointer-events-none z-20"></div>
+
+            {/* Product Modal */}
+            <AnimatePresence>
+                {selectedProduct && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setSelectedProduct(null)}
+                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                        />
+
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row max-h-[90vh] sm:max-h-[85vh] md:h-[600px] z-[105]"
+                        >
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedProduct(null);
+                                }}
+                                className="absolute top-4 right-4 z-[110] w-8 h-8 md:w-10 md:h-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur rounded-full flex items-center justify-center text-slate-800 dark:text-white hover:bg-white dark:hover:bg-slate-800 shadow-sm transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-lg">close</span>
+                            </button>
+
+                            <div className="flex flex-col md:flex-row w-full h-full overflow-hidden">
+                                {/* Image Section - Top on mobile, Left on desktop */}
+                                <div className="w-full md:w-1/2 md:h-full shrink-0 relative bg-slate-100 dark:bg-slate-800">
+                                    <div className="w-full relative aspect-square sm:aspect-video md:aspect-auto md:h-full">
+                                        <img src={selectedProduct.image} alt={selectedProduct.name} className="absolute inset-0 w-full h-full object-cover" />
+                                    </div>
+                                    <div className="absolute bottom-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1 z-10">
+                                        <span className="material-symbols-outlined text-sm">local_fire_department</span>
+                                        {selectedProduct.discount}
+                                    </div>
+                                </div>
+
+                                {/* Content Section - Bottom on mobile, Right on desktop */}
+                                <div className="p-5 md:p-8 flex flex-col gap-4 w-full md:w-1/2 overflow-y-auto" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
+                                    <div className="flex-1">
+                                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2">{selectedProduct.name}</h3>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-2xl font-extrabold text-primary">{selectedProduct.price}</span>
+                                            <span className="text-sm text-slate-400 line-through">{selectedProduct.originalPrice}</span>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                                        {selectedProduct.description || "Rasakan kelezatan produk premium kami. Dibuat dengan bahan-bahan pangan berkualitas tinggi untuk memberikan cita rasa terbaik dan bergizi bagi Anda dan keluarga."}
+                                    </p>
+
+                                    <div className="flex items-center justify-between py-4 border-y border-slate-100 dark:border-slate-800">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-slate-500 mb-1">Sisa Stok</span>
+                                            <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">{selectedProduct.itemsLeft}</span>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-xs text-slate-500 font-medium">Jumlah:</span>
+                                            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
+                                                <button
+                                                    onClick={() => setQtyModal(Math.max(1, qty - 1))}
+                                                    className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">remove</span>
+                                                </button>
+                                                <span className="w-10 text-center font-bold text-slate-800 dark:text-white">{qty}</span>
+                                                <button
+                                                    onClick={() => setQtyModal(Math.min(parseStock(selectedProduct.itemsLeft), qty + 1))}
+                                                    className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">add</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleAddToCart}
+                                        className="w-full py-4 mt-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-red-500/25 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                                    >
+                                        <span className="material-symbols-outlined">shopping_cart</span>
+                                        Tambahkan ke Keranjang
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </section>
     );
 }

@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { CartProvider } from "@/store/cart-context";
+import { FavoriteProvider } from "@/store/favorite-context";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -34,11 +35,13 @@ export default function RootLayout({
       >
         <ToastProvider>
           <CartProvider>
-            <Navbar />
-            <main className="flex-grow w-full">
-              {children}
-            </main>
-            <Footer />
+            <FavoriteProvider>
+              <Navbar />
+              <main className="flex-grow w-full">
+                {children}
+              </main>
+              <Footer />
+            </FavoriteProvider>
           </CartProvider>
         </ToastProvider>
       </body>

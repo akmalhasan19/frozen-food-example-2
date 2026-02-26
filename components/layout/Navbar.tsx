@@ -1,11 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCart } from "@/store/cart-context";
+import FavoriteDropdown from "./FavoriteDropdown";
+import NotificationDropdown from "./NotificationDropdown";
 
 export default function Navbar() {
+    const pathname = usePathname();
     const { items } = useCart();
     const cartItemCount = items.reduce((total, item) => total + item.quantity, 0);
+
+    const isProdukPage = pathname === '/produk';
 
     return (
         <>
@@ -52,9 +58,7 @@ export default function Navbar() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-3 md:gap-6">
-                        <button className="relative p-2 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors hidden sm:block">
-                            <span className="material-symbols-outlined text-sm md:text-base">favorite</span>
-                        </button>
+                        <FavoriteDropdown />
 
                         <Link href="/keranjang" className="relative p-2 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors cursor-pointer">
                             <span className="material-symbols-outlined">shopping_cart</span>
@@ -65,9 +69,7 @@ export default function Navbar() {
                             )}
                         </Link>
 
-                        <button className="p-2 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors hidden sm:block">
-                            <span className="material-symbols-outlined text-sm md:text-base">notifications</span>
-                        </button>
+                        <NotificationDropdown />
 
                         <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm cursor-pointer ml-1 md:ml-2">
                             <img
@@ -79,17 +81,19 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                {/* Search (Mobile) */}
-                <div className="md:hidden mt-3 relative w-full">
-                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                        <span className="material-symbols-outlined text-slate-400 text-sm">search</span>
+                {/* Search (Mobile) - Hidden on /produk page since it has its own search */}
+                {!isProdukPage && (
+                    <div className="md:hidden mt-3 relative w-full">
+                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                            <span className="material-symbols-outlined text-slate-400 text-sm">search</span>
+                        </div>
+                        <input
+                            className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-xl py-2 pl-9 pr-3 focus:ring-2 focus:ring-primary/50 text-xs transition-all duration-300"
+                            placeholder="Search premium frozen foods..."
+                            type="text"
+                        />
                     </div>
-                    <input
-                        className="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-xl py-2 pl-9 pr-3 focus:ring-2 focus:ring-primary/50 text-xs transition-all duration-300"
-                        placeholder="Search premium frozen foods..."
-                        type="text"
-                    />
-                </div>
+                )}
             </nav>
         </>
     );

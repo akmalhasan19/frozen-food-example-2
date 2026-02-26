@@ -11,7 +11,10 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { formatRupiah } from '@/lib/money';
-import { ShippingType, PaymentMethod, Order } from '@/types';
+import { ShippingType, Order } from '@/types';
+
+// Nomor WhatsApp Penjual (ganti dengan nomor asli)
+const SELLER_WHATSAPP = '6281234567890';
 
 // Schema validasi form Checkout
 const checkoutSchema = z.object({
@@ -23,15 +26,14 @@ const checkoutSchema = z.object({
     customerAddress: z.string().min(10, { message: 'Alamat lengkap wajib diisi' }),
     customerNotes: z.string().optional(),
     shippingType: z.enum(['REGULER', 'INSTAN'] as const),
-    paymentMethod: z.enum(['TRANSFER', 'COD'] as const),
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 
-export function CheckoutForm({ onShippingChange }: { onShippingChange: (fee: number) => void }) {
+export function CheckoutForm({ onShippingChange, onSubmittingChange }: { onShippingChange: (fee: number) => void, onSubmittingChange?: (isSubmitting: boolean) => void }) {
     const { items, subtotal, discount, couponCode, clearCart, isHydrated } = useCart();
     const router = useRouter();
-    const [isSubmitting, setIsSubmitting] = useState(false);
+
 
     const {
         register,
@@ -42,7 +44,6 @@ export function CheckoutForm({ onShippingChange }: { onShippingChange: (fee: num
         resolver: zodResolver(checkoutSchema),
         defaultValues: {
             shippingType: 'REGULER',
-            paymentMethod: 'TRANSFER',
             customerNotes: ''
         }
     });
@@ -50,9 +51,6 @@ export function CheckoutForm({ onShippingChange }: { onShippingChange: (fee: num
     const selectedShipping = watch('shippingType');
 
     useEffect(() => {
-        // Basic rules defined
-        // `REGULER`: ongkir Rp15.000, gratis jika subtotal >= Rp200.000
-        // `INSTAN`: ongkir Rp25.000, tidak ikut gratis ongkir
         let fee = 0;
         if (selectedShipping === 'REGULER') {
             fee = subtotal >= 200000 ? 0 : 15000;
@@ -62,11 +60,42 @@ export function CheckoutForm({ onShippingChange }: { onShippingChange: (fee: num
         onShippingChange(fee);
     }, [selectedShipping, subtotal, onShippingChange]);
 
+    const buildWhatsAppMessage = (data: CheckoutFormValues, orderId: string, finalShippingFee: number, finalTotal: number): string => {
+        let msg = `🛒 *PESANAN BARU - FrozenHub*\n`;
+        msg += `📄 Order ID: ${orderId}\n`;
+        msg += `━━━━━━━━━━━━━━━━━━\n\n`;
+
+        msg += `📋 *Detail Pesanan:*\n`;
+        items.forEach((item, index) => {
+            msg += `${index + 1}. ${item.product.name} (x${item.quantity}) — ${formatRupiah(item.product.price * item.quantity)}\n`;
+        });
+
+        msg += `\n💰 Subtotal: ${formatRupiah(subtotal)}\n`;
+        msg += `🚚 Ongkir (${data.shippingType === 'REGULER' ? 'Reguler' : 'Instan'}): ${finalShippingFee === 0 ? 'Gratis' : formatRupiah(finalShippingFee)}\n`;
+        if (discount > 0) {
+            msg += `🎫 Diskon (${couponCode}): -${formatRupiah(discount)}\n`;
+        }
+        msg += `━━━━━━━━━━━━━━━━━━\n`;
+        msg += `💵 *TOTAL: ${formatRupiah(finalTotal)}*\n\n`;
+
+        msg += `📦 *Info Pengiriman:*\n`;
+        msg += `👤 Nama: ${data.customerName}\n`;
+        msg += `📱 WA: ${data.customerPhone}\n`;
+        msg += `🏠 Alamat: ${data.customerAddress}\n`;
+        msg += `🚚 Pengiriman: ${data.shippingType === 'REGULER' ? 'Kurir Reguler (2-3 Hari)' : 'Kurir Instan (2-4 Jam)'}\n`;
+        if (data.customerNotes) {
+            msg += `📝 Catatan: ${data.customerNotes}\n`;
+        }
+
+        msg += `\nTerima kasih! 🙏`;
+
+        return msg;
+    };
+
     const onSubmit = (data: CheckoutFormValues) => {
         if (items.length === 0) return;
-        setIsSubmitting(true);
+        onSubmittingChange?.(true);
 
-        // Hitung ulang ongkir saat submit untuk jaga-jaga
         let finalShippingFee = 0;
         if (data.shippingType === 'REGULER') {
             finalShippingFee = subtotal >= 200000 ? 0 : 15000;
@@ -75,10 +104,12 @@ export function CheckoutForm({ onShippingChange }: { onShippingChange: (fee: num
         }
 
         const finalTotal = subtotal + finalShippingFee - discount;
+        const orderId = generateOrderId();
 
         const newOrder: Order = {
-            id: generateOrderId(),
+            id: orderId,
             ...data,
+            paymentMethod: 'COD', // Default, karena pembayaran diurus via WA
             items: items.map(i => ({
                 productId: i.product.id,
                 name: i.product.name,
@@ -95,10 +126,17 @@ export function CheckoutForm({ onShippingChange }: { onShippingChange: (fee: num
             createdAt: new Date().toISOString()
         };
 
-        // Save order
+        // Save order locally
         orderStore.saveOrder(newOrder);
 
-        // Clear cart (this ensures we persist empty cart as well)
+        // Build WhatsApp message
+        const message = buildWhatsAppMessage(data, orderId, finalShippingFee, finalTotal);
+        const waUrl = `https://wa.me/${SELLER_WHATSAPP}?text=${encodeURIComponent(message)}`;
+
+        // Open WhatsApp in new tab
+        window.open(waUrl, '_blank');
+
+        // Clear cart
         clearCart();
 
         // Redirect to success page
@@ -108,7 +146,7 @@ export function CheckoutForm({ onShippingChange }: { onShippingChange: (fee: num
     if (!isHydrated) return null;
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm">
+        <form id="checkout-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8 bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm">
 
             <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Informasi Pengiriman</h2>
@@ -184,44 +222,6 @@ export function CheckoutForm({ onShippingChange }: { onShippingChange: (fee: num
                     </label>
                 </div>
                 {errors.shippingType && <p className="mt-2 text-sm text-red-600">{errors.shippingType.message}</p>}
-            </div>
-
-            <div className="border-t border-gray-200 pt-8 mt-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Metode Pembayaran</h2>
-                <div className="grid grid-cols-1 gap-4">
-                    <label className={`relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none ${watch('paymentMethod') === 'TRANSFER' ? 'border-green-500 ring-1 ring-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-400'}`}>
-                        <input type="radio" value="TRANSFER" {...register('paymentMethod')} className="sr-only" />
-                        <div className="flex w-full items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="block text-sm font-semibold text-gray-900">Transfer Bank Lokal (BCA / Mandiri / BNI)</span>
-                                <span className="block text-xs text-gray-500 mt-1">Dicek manual oleh Admin</span>
-                            </div>
-                        </div>
-                    </label>
-
-                    <label className={`relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none ${watch('paymentMethod') === 'COD' ? 'border-green-500 ring-1 ring-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-400'}`}>
-                        <input type="radio" value="COD" {...register('paymentMethod')} className="sr-only" />
-                        <div className="flex w-full items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="block text-sm font-semibold text-gray-900">Bayar di Tempat (COD)</span>
-                                <span className="block text-xs text-gray-500 mt-1">Hanya berlaku untuk kurir Reguler</span>
-                            </div>
-                        </div>
-                    </label>
-                </div>
-                {errors.paymentMethod && <p className="mt-2 text-sm text-red-600">{errors.paymentMethod.message}</p>}
-            </div>
-
-            <div className="border-t border-gray-200 pt-8 mt-8 flex justify-end">
-                <Button
-                    type="submit"
-                    size="lg"
-                    className="w-full md:w-64 text-lg shadow-md hover:shadow-lg transition-all"
-                    isLoading={isSubmitting}
-                    disabled={items.length === 0}
-                >
-                    Buat Pesanan
-                </Button>
             </div>
         </form>
     );

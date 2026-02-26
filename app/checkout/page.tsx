@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 export default function CheckoutPage() {
     const { items, subtotal, discount, couponCode, isHydrated } = useCart();
     const [shippingFee, setShippingFee] = useState(15000); // Default set to 15k just for initial flash mount before effect kicks in
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -35,11 +36,11 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
-                    <div className="flex-1 w-full order-2 lg:order-1">
-                        <CheckoutForm onShippingChange={setShippingFee} />
+                    <div className="flex-1 w-full">
+                        <CheckoutForm onShippingChange={setShippingFee} onSubmittingChange={setIsSubmitting} />
                     </div>
 
-                    <div className="w-full lg:w-[400px] shrink-0 order-1 lg:order-2">
+                    <div className="w-full lg:w-[400px] shrink-0">
                         <OrderSummary
                             items={items}
                             subtotal={subtotal}
@@ -47,6 +48,7 @@ export default function CheckoutPage() {
                             discount={discount}
                             total={total}
                             couponCode={couponCode}
+                            isSubmitting={isSubmitting}
                         />
                     </div>
                 </div>

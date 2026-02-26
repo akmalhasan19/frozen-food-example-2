@@ -81,13 +81,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-0">
 
                     {/* Product Image Area */}
-                    <div className="relative aspect-square md:aspect-auto bg-gray-100 flex items-center justify-center p-8 border-b md:border-b-0 md:border-r border-gray-200">
-                        <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-orange-50 opacity-50" />
-                        <div className="relative z-10 w-full max-w-xs xl:max-w-sm aspect-square rounded-full bg-white/40 shadow-xl backdrop-blur-sm flex items-center justify-center border border-white/60 text-8xl text-gray-300 font-bold uppercase overflow-hidden">
-                            {product.name.charAt(0)}
-                            {/* Decorative background circle */}
-                            <div className="absolute inset-2 rounded-full border border-dashed border-gray-200" />
-                        </div>
+                    <div className="relative aspect-square md:aspect-auto bg-slate-100 dark:bg-slate-800 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-200 overflow-hidden">
+                        <img
+                            alt={product.name}
+                            className="object-cover w-full h-full"
+                            src={product.image}
+                        />
 
                         <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
                             <Badge variant="warning" className="text-md px-4 py-1.5 shadow-sm">{product.category}</Badge>

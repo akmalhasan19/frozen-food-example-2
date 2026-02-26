@@ -19,10 +19,13 @@ export function CartItemRow({ item }: CartItemRowProps) {
 
     return (
         <div className="flex gap-4 py-5 border-b border-gray-100 last:border-0 items-start md:items-center">
-            {/* Product Image Placeholder */}
+            {/* Product Image */}
             <Link href={`/produk/${product.slug}`} className="shrink-0 w-20 h-20 md:w-24 md:h-24 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden border border-gray-200 relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-orange-50 opacity-50 group-hover:opacity-75 transition-opacity" />
-                <span className="text-3xl text-gray-300 font-bold z-10 uppercase">{product.name.charAt(0)}</span>
+                <img
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    src={product.image}
+                />
             </Link>
 
             {/* Product Info & Controls */}
