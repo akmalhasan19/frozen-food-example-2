@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/store/cart-context";
 import { Product } from "@/types";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 // Sample Data Array (expanded to 8 to show pagination)
 const flashSaleItems = [
@@ -95,6 +100,8 @@ export default function FlashSaleSection() {
     const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     const [qty, setQtyModal] = useState(1);
     const { items, addItem, setQty } = useCart();
+    const sectionRef = useRef<HTMLElement>(null);
+    const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     const itemsPerPage = 4;
     const totalPages = Math.ceil(flashSaleItems.length / itemsPerPage);
@@ -120,6 +127,54 @@ export default function FlashSaleSection() {
             };
         }
     }, [selectedProduct]);
+
+    // GSAP staggered entrance animation (desktop only)
+    const animateCards = useCallback(() => {
+        if (typeof window === "undefined" || window.innerWidth < 1024) return;
+        const cards = cardRefs.current.filter(Boolean) as HTMLDivElement[];
+        if (cards.length === 0) return;
+
+        gsap.fromTo(
+            cards,
+            {
+                x: -120,
+                opacity: 0,
+            },
+            {
+                x: 0,
+                opacity: 1,
+                duration: 0.7,
+                stagger: 0.15,
+                ease: "power3.out",
+                overwrite: true,
+            }
+        );
+    }, []);
+
+    // Initial entrance animation with ScrollTrigger
+    useGSAP(() => {
+        if (typeof window === "undefined" || window.innerWidth < 1024) return;
+        const cards = cardRefs.current.filter(Boolean) as HTMLDivElement[];
+        if (cards.length === 0) return;
+
+        gsap.set(cards, { x: -120, opacity: 0 });
+
+        ScrollTrigger.create({
+            trigger: sectionRef.current,
+            start: "top 80%",
+            once: true,
+            onEnter: () => animateCards(),
+        });
+    }, { scope: sectionRef, dependencies: [] });
+
+    // Re-trigger animation on carousel page change
+    useEffect(() => {
+        // Skip initial render (handled by ScrollTrigger above)
+        if (currentPage === 0) return;
+        // Small delay to let DOM update with new items
+        const timer = setTimeout(() => animateCards(), 50);
+        return () => clearTimeout(timer);
+    }, [currentPage, animateCards]);
 
     const handleNext = () => {
         setDirection(1);
@@ -192,7 +247,7 @@ export default function FlashSaleSection() {
     };
 
     return (
-        <section className="relative px-4 md:px-10 lg:px-20 pt-2 pb-10 overflow-hidden">
+        <section ref={sectionRef} className="relative px-4 md:px-10 lg:px-20 pt-2 pb-10 overflow-hidden">
             <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
@@ -240,11 +295,12 @@ export default function FlashSaleSection() {
                         }}
                         className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 relative z-10 w-full"
                     >
-                        {currentItems.map((item) => (
+                        {currentItems.map((item, index) => (
                             <div
                                 key={item.id}
+                                ref={(el) => { cardRefs.current[index] = el; }}
                                 onClick={() => setSelectedProduct(item)}
-                                className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-3 md:p-4 group hover:shadow-2xl hover:shadow-primary/10 transition-all flex flex-col h-full cursor-pointer"
+                                className="flash-sale-card bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-3 md:p-4 group hover:shadow-2xl hover:shadow-primary/10 transition-all flex flex-col h-full cursor-pointer"
                             >
                                 <div className="relative rounded-2xl overflow-hidden aspect-square mb-2 md:mb-4 bg-slate-50 dark:bg-slate-800">
                                     <img

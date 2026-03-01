@@ -14,7 +14,7 @@ import { formatRupiah } from '@/lib/money';
 import { ShippingType, Order } from '@/types';
 
 // Nomor WhatsApp Penjual (ganti dengan nomor asli)
-const SELLER_WHATSAPP = '6281234567890';
+const SELLER_WHATSAPP = '6282297829991';
 
 // Schema validasi form Checkout
 const checkoutSchema = z.object({
@@ -61,33 +61,35 @@ export function CheckoutForm({ onShippingChange, onSubmittingChange }: { onShipp
     }, [selectedShipping, subtotal, onShippingChange]);
 
     const buildWhatsAppMessage = (data: CheckoutFormValues, orderId: string, finalShippingFee: number, finalTotal: number): string => {
-        let msg = `🛒 *PESANAN BARU - FrozenHub*\n`;
-        msg += `📄 Order ID: ${orderId}\n`;
-        msg += `━━━━━━━━━━━━━━━━━━\n\n`;
+        let msg = `Halo admin FrozenHub!\n`;
+        msg += `Saya mau pesan beberapa produk nih. Apakah stoknya masih tersedia?\n\n`;
 
-        msg += `📋 *Detail Pesanan:*\n`;
+        msg += `Berikut detail pesanan saya:\n`;
+        msg += `Order ID: ${orderId}\n\n`;
+
+        msg += `Pesanan:\n`;
         items.forEach((item, index) => {
-            msg += `${index + 1}. ${item.product.name} (x${item.quantity}) — ${formatRupiah(item.product.price * item.quantity)}\n`;
+            msg += `${index + 1}. ${item.product.name} (x${item.quantity}) - ${formatRupiah(item.product.price * item.quantity)}\n`;
         });
 
-        msg += `\n💰 Subtotal: ${formatRupiah(subtotal)}\n`;
-        msg += `🚚 Ongkir (${data.shippingType === 'REGULER' ? 'Reguler' : 'Instan'}): ${finalShippingFee === 0 ? 'Gratis' : formatRupiah(finalShippingFee)}\n`;
+        msg += `\nSubtotal: ${formatRupiah(subtotal)}\n`;
+        msg += `Ongkir (${data.shippingType === 'REGULER' ? 'Reguler' : 'Instan'}): ${finalShippingFee === 0 ? 'Gratis' : formatRupiah(finalShippingFee)}\n`;
         if (discount > 0) {
-            msg += `🎫 Diskon (${couponCode}): -${formatRupiah(discount)}\n`;
+            msg += `Diskon (${couponCode}): -${formatRupiah(discount)}\n`;
         }
-        msg += `━━━━━━━━━━━━━━━━━━\n`;
-        msg += `💵 *TOTAL: ${formatRupiah(finalTotal)}*\n\n`;
+        msg += `------------------\n`;
+        msg += `Total Perkiraan: ${formatRupiah(finalTotal)}\n\n`;
 
-        msg += `📦 *Info Pengiriman:*\n`;
-        msg += `👤 Nama: ${data.customerName}\n`;
-        msg += `📱 WA: ${data.customerPhone}\n`;
-        msg += `🏠 Alamat: ${data.customerAddress}\n`;
-        msg += `🚚 Pengiriman: ${data.shippingType === 'REGULER' ? 'Kurir Reguler (2-3 Hari)' : 'Kurir Instan (2-4 Jam)'}\n`;
+        msg += `Tolong dikirim ke:\n`;
+        msg += `Nama: ${data.customerName}\n`;
+        msg += `WA: ${data.customerPhone}\n`;
+        msg += `Alamat: ${data.customerAddress}\n`;
+        msg += `Metode Pengiriman: ${data.shippingType === 'REGULER' ? 'Kurir Reguler (2-3 Hari)' : 'Kurir Instan (2-4 Jam)'}\n`;
         if (data.customerNotes) {
-            msg += `📝 Catatan: ${data.customerNotes}\n`;
+            msg += `Catatan: ${data.customerNotes}\n`;
         }
 
-        msg += `\nTerima kasih! 🙏`;
+        msg += `\nUntuk pembayarannya lewat mana ya min? Ditunggu info total pasnya ya. Terima kasih!`;
 
         return msg;
     };
